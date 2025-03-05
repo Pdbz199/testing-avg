@@ -8,6 +8,7 @@ import torch.optim as optim
 from datetime import datetime
 from models import Actor, Critic
 from optimizers.adam_w_schedule_free import AdamWScheduleFree
+from stable_baselines3.common.utils import set_random_seed
 from torch.utils.tensorboard import SummaryWriter
 from typing import Tuple
 from utils import count_parameters
@@ -65,11 +66,12 @@ if __name__ == "__main__":
         writer.add_text("hyperparameters", arg_text)
 
     # Set seeds
-    torch.manual_seed(3)
+    seed = 3
+    set_random_seed(seed)
 
     # Environment
     env = gym.make("Simple2DNavigation-v0")
-    env.reset(seed=3)  # Set same seed for environment
+    env.reset(seed=seed)  # Set same seed for environment
 
     # Agent
     state_dim = env.observation_space.shape[0]
@@ -83,14 +85,18 @@ if __name__ == "__main__":
     print("Critic parameter count:", count_parameters(critic))
 
     learning_rate = args.learning_rate
-    actor_optimizer, needs_train_eval = get_optimizer(args.optimizer,
-                                                    actor.parameters(),
-                                                    lr=learning_rate,
-                                                    warmup_steps=args.warmup_steps)
-    critic_optimizer, _ = get_optimizer(args.optimizer,
-                                      critic.parameters(),
-                                      lr=10*learning_rate,
-                                      warmup_steps=args.warmup_steps)
+    actor_optimizer, needs_train_eval = get_optimizer(
+        args.optimizer,
+        actor.parameters(),
+        lr=learning_rate,
+        warmup_steps=args.warmup_steps,
+    )
+    critic_optimizer, _ = get_optimizer(
+        args.optimizer,
+        critic.parameters(),
+        lr=10*learning_rate,
+        warmup_steps=args.warmup_steps,
+    )
 
     # Put optimizers in training mode if needed
     if needs_train_eval:
@@ -104,7 +110,7 @@ if __name__ == "__main__":
 
     for episode_num in range(num_episodes):
         state, _ = env.reset()
-        state = torch.FloatTensor(state).unsqueeze(0)
+        state = torch.FloatTensor(state).unsqueeze(dim=0)
         state_paths.append([state])
         episodic_reward = 0
 
@@ -113,7 +119,7 @@ if __name__ == "__main__":
 
             # Environment step
             next_state, reward, done, truncated, _ = env.step(action.squeeze().detach().numpy())
-            next_state = torch.FloatTensor(next_state).unsqueeze(0)
+            next_state = torch.FloatTensor(next_state).unsqueeze(dim=0)
             done = done or truncated
 
             # Learning
